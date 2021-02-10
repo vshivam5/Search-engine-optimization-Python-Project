@@ -1,0 +1,134 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from bs4 import BeautifulSoup
+import re
+import pandas as pd
+import os
+import csv
+import urllib
+from urllib.request import urlopen
+import lxml
+from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+from nltk.tokenize import RegexpTokenizer, word_tokenize, sent_tokenize
+from nltk.stem.wordnet import WordNetLemmatizer
+import termcolor
+from termcolor import colored
+import requests
+import collections
+from collections import Counter
+import re
+import string
+from string import punctuation
+import os
+import random
+
+nltk.download('wordnet')
+nltk.download('punkt')
+nltk.download('stopwords')
+
+url=str(input("Enter a url you want to work with:" ))
+# create a new Firefox session
+binary = FirefoxBinary(r"C:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe")
+caps = DesiredCapabilities.FIREFOX.copy()
+caps['marionette'] = True
+driver=webdriver.Firefox(firefox_binary=binary,capabilities=caps,executable_path="C:\\Users\\HP\\AppData\\Local\\Programs\\Python\\Python37-32\\geckodriver\\geckodriver.exe")
+driver.implicitly_wait(30)
+driver.get(url)
+dataset = pd.read_csv('C:\\Users\\HP\\AppData\\Local\\Programs\\Python\\Python37-32\\papers1.csv','wb',error_bad_lines=False,delimiter = '\t , \n',engine='python')
+dataset.head()
+#finding keywords
+bsurl=urlopen(url)
+soup=BeautifulSoup(bsurl, "lxml")
+keywords= soup.find("meta",property="og:keywords")
+print(colored("Keywords from the web page are:") +keywords["content"] if keywords else "No keywords found")
+#telling driver to click a link
+python_button = driver.find_element_by_link_text(input("Enter the link text you want to find:")) #FHSU
+python_button.click()
+print("Link Text found and clicked")
+#stopwords counter
+word = re.sub("[^a-zA-Z]"," ",soup.getText())
+#extract words
+words = word_tokenize(word)
+#remove stop words
+stop_words = set(stopwords.words('english'))
+filtered_words = [w for w in words if not w in stop_words]
+a = Counter([x.lower() for y in filtered_words for x in y.split()])
+b = (a.most_common())
+makeaframe = pd.DataFrame(b)
+makeaframe.columns = ['Words', 'Frequency']
+makeaframe.head()
+print("Stopwords found and removed:")
+print(makeaframe)
+#word counter
+
+# We get the words within paragrphs
+text_p = (''.join(s.findAll(text=True))for s in soup.findAll('p'))
+c_p = Counter((x.rstrip(punctuation).lower() for y in text_p for x in y.split()))
+
+# We get the words within divs
+text_div = (''.join(s.findAll(text=True))for s in soup.findAll('div'))
+c_div = Counter((x.rstrip(punctuation).lower() for y in text_div for x in y.split()))
+
+# We sum the two countesr and get a list with words count from most to less common
+total = c_div + c_p
+print("10 most common words are: ")
+print(total.most_common(10))
+#Selenium hands the page source to Beautiful Soup
+soup_level1=BeautifulSoup(driver.page_source, 'lxml')
+x = 0 #counter
+#data=[driver.find_element_by_link_text("Older Posts"),'driver.find_element_by_link_text("Newer Posts")]
+while x>=0:
+    x+=1
+#Beautiful Soup finds Title links on the agency page and the loop begins
+    if x%2==0 and x%3!=0:
+        for link in soup_level1.find_all('a',id=re.compile("Blog1_blog-pager-older-link")):
+            python_button =driver.find_element_by_link_text("Older Posts") #FHSU
+            python_button.click()
+            print("Link to Older Posts clicked")
+            if python_button==False:
+                python_button=driver.find_element_by_link_text("Newer Posts")
+                python_button.click()
+                print("Link to Newer Posts clicked because start of the file reached")
+        continue;
+       
+    elif x%3==0 and x%2!=0:
+        for link in soup_level1.find_all('a',id=re.compile("Blog1_blog-pager-newer-link")):
+            python_button =driver.find_element_by_link_text("Newer Posts") #FHSU
+            python_button.click()
+            print("Link to Newer Posts clicked")
+        continue;
+       #increment the counter variable before starting the loop over
+       
+    elif x%2==0 and x%3==0:
+        driver.execute_script("window.history.go(-1)")
+        print("Previous Page")
+        continue;
+       
+    else:
+        python_button=driver.find_element_by_link_text(input("Enter link text: "))
+        python_button.click()
+        print("Entred link clicked")
+    continue;
+    #end loop block
+    
+#loop has completed
+#combine all pandas dataframes in the list into one big dataframe
+"""result = pd.concat([pd.DataFrame(datalist[i]) for i in range(len(datalist))],ignore_index=True)
+
+#convert the pandas dataframe to JSON
+json_records = result.to_json(orient='records')
+#pretty print to CLI with tabulate
+#converts to an ascii table
+print(tabulate(result, headers=['words','frequncy'],tablefmt='psql'))
+
+#get current working directory
+path = os.getcwd()
+
+#open, write, and close the file
+f = open(path + "\\fhsu_payroll_data.json","w") #FHSU
+f.write(json_records)
+f.close()"""
